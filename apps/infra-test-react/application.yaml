@@ -4,7 +4,7 @@ metadata:
   name: infra-test-react
   namespace: argocd
   annotations:
-    argocd-image-updater.argoproj.io/image-list: react=ghcr.io/zubeyranwar/infra-test-react
+    argocd-image-updater.argoproj.io/image-list: react=ghcr.io/zubeyranwar/infra-test-react:main
     argocd-image-updater.argoproj.io/react.update-strategy: digest
     argocd-image-updater.argoproj.io/react.allow-tags: regexp:^main$
     argocd-image-updater.argoproj.io/react.kustomize.image-name: ghcr.io/zubeyranwar/infra-test-react
