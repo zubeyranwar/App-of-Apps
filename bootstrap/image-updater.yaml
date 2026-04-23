@@ -1,0 +1,9 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: app-updater
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: infra-test-react
+      useAnnotations: true

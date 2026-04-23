@@ -33,6 +33,7 @@ Goal:
 ```bash
 kubectl apply -f bootstrap/project.yaml
 kubectl apply -f bootstrap/root-application.yaml
+kubectl apply -f bootstrap/image-updater.yaml
 ```
 
 ## Verify image auto-update flow
