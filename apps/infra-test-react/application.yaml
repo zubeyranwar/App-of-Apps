@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infra-test-react
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: react=ghcr.io/zubeyranwar/infra-test-react
+    argocd-image-updater.argoproj.io/react.update-strategy: digest
+    argocd-image-updater.argoproj.io/react.allow-tags: regexp:^main$
+    argocd-image-updater.argoproj.io/react.kustomize.image-name: ghcr.io/zubeyranwar/infra-test-react
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+spec:
+  project: platform-apps
+  source:
+    repoURL: https://github.com/zubeyranwar/App-of-Apps.git
+    targetRevision: main
+    path: workloads/infra-test-react
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infra-test-react
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
