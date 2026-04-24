@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infra-test-node
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: node=ghcr.io/zubeyranwar/infra-test-node:main
+    argocd-image-updater.argoproj.io/node.update-strategy: digest
+    argocd-image-updater.argoproj.io/node.allow-tags: regexp:^main$
+    argocd-image-updater.argoproj.io/node.kustomize.image-name: ghcr.io/zubeyranwar/infra-test-node
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/write-back-target: kustomization
+    argocd-image-updater.argoproj.io/git-branch: main
+spec:
+  project: platform-apps
+  source:
+    repoURL: https://github.com/zubeyranwar/App-of-Apps.git
+    targetRevision: main
+    path: workloads/infra-test-node
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infra-test-node
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

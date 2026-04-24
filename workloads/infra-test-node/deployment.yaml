@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infra-test-node
+  labels:
+    app: infra-test-node
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: infra-test-node
+  template:
+    metadata:
+      labels:
+        app: infra-test-node
+    spec:
+      imagePullSecrets:
+        - name: ghcr-login
+      containers:
+        - name: app
+          image: ghcr.io/zubeyranwar/infra-test-node:main
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi

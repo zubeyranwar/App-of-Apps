@@ -1,23 +1,23 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: infra-test-react
+  name: infra-test-node
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
   rules:
-    - host: zubeyr.duckdns.org
+    - host: nodejstest.duckdns.org
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: infra-test-react
+                name: infra-test-node
                 port:
                   number: 80
   tls:
     - hosts:
-        - zubeyr.duckdns.org
-      secretName: infra-test-react-tls
+        - nodejstest.duckdns.org
+      secretName: infra-test-node-tls
