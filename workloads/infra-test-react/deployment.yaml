@@ -16,10 +16,18 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-login
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: infra-test-react-nginx
       containers:
         - name: app
           image: ghcr.io/zubeyranwar/infra-test-react:main
           imagePullPolicy: Always
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
           ports:
             - containerPort: 80
           resources:

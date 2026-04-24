@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: infra-test-react
 resources:
   - namespace.yaml
+  - nginx-config.yaml
   - deployment.yaml
   - service.yaml
   - ingress.yaml
