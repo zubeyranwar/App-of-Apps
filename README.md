@@ -1,34 +1,27 @@
-# Argo CD App-of-Apps (Test Setup)
+# Argo CD App-of-Apps (Infra Test)
 
-This repository directory is the GitOps source for a **test application** (`infra-test-react`) using an App-of-Apps pattern.
+This repository is the GitOps source used by Argo CD App-of-Apps.
 
-Goal:
-- Push image from GitHub Actions to GHCR
-- Argo CD Image Updater detects GHCR update
-- Image Updater writes new image reference back to Git
-- Argo CD syncs and deploys the new version automatically
+Current apps:
+- `infra-test-react` → host: `zubeyr.duckdns.org`
+- `infra-test-node` → host: `nodejstest.duckdns.org`
 
-## Structure
+Both are managed by Argo CD Image Updater (GHCR `main` tag + digest write-back to Kustomize).
 
-- `bootstrap/`:
-  - `project.yaml`: Argo CD project definition
-  - `root-application.yaml`: root app that manages all child apps in `apps/`
-- `apps/infra-test-react/`:
-  - child Argo CD `Application` with image-updater annotations
-- `workloads/infra-test-react/`:
-  - Kubernetes manifests (Kustomize) for deployment/service/ingress
+## Repository layout
 
-## Current configured values
+- `bootstrap/`
+  - `project.yaml`: Argo CD `AppProject`
+  - `root-application.yaml`: root app that recursively manages `apps/`
+  - `image-updater.yaml`: `ImageUpdater` CR
+- `apps/<app-name>/application.yaml`
+  - child Argo CD `Application` + image updater annotations
+- `workloads/<app-name>/`
+  - Kustomize workload manifests (`namespace`, `deployment`, `service`, `ingress`, `kustomization`)
 
-- GitOps repo: `https://github.com/zubeyranwar/App-of-Apps.git`
-- App image: `ghcr.io/zubeyranwar/infra-test-react:main`
+## Bootstrap commands
 
-## Required one-time edit
-
-1. In `workloads/infra-test-react/ingress.yaml`:
-	- `react-test.example.com` (set your real DNS host)
-
-## Deploy App-of-Apps
+Run once on cluster:
 
 ```bash
 kubectl apply -f bootstrap/project.yaml
@@ -36,46 +29,131 @@ kubectl apply -f bootstrap/root-application.yaml
 kubectl apply -f bootstrap/image-updater.yaml
 ```
 
-## Verify image auto-update flow
+Verify:
 
-1. Push to `infra-test-react` repo `main` branch.
-2. GitHub Action builds and pushes `ghcr.io/<user>/infra-test-react:main`.
-3. Argo CD Image Updater updates `workloads/infra-test-react/kustomization.yaml` in Git.
-4. Argo CD syncs and rollout happens in namespace `infra-test-react`.
+```bash
+kubectl get app -n argocd
+kubectl get imageupdater -n argocd
+```
 
-## How to test without a real domain
+## Add a new application (standard workflow)
 
-You do **not** need DNS first to verify that GitOps works.
+Example app name: `my-app`
 
-Use this order:
+### 1) Add child Argo app
 
-1. Push the React app repo (`infra-test-react`) so GitHub Actions publishes the image to GHCR.
-2. Push the GitOps repo (`App-of-Apps`) so Argo CD can read the manifests.
-3. Apply the bootstrap manifests.
-4. Confirm Argo CD creates the app and the `infra-test-react` pods become `Running`.
-5. Test the app with `kubectl port-forward` to the service in namespace `infra-test-react`.
+Create:
+- `apps/my-app/application.yaml`
 
-Example checks:
+Use this template:
 
-- `kubectl get applications -n argocd`
-- `kubectl get pods -n infra-test-react`
-- `kubectl get svc -n infra-test-react`
-- `kubectl port-forward svc/infra-test-react 8080:80 -n infra-test-react`
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: app=ghcr.io/<owner>/my-app:main
+    argocd-image-updater.argoproj.io/app.update-strategy: digest
+    argocd-image-updater.argoproj.io/app.allow-tags: regexp:^main$
+    argocd-image-updater.argoproj.io/app.kustomize.image-name: ghcr.io/<owner>/my-app
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/write-back-target: kustomization
+    argocd-image-updater.argoproj.io/git-branch: main
+spec:
+  project: platform-apps
+  source:
+    repoURL: https://github.com/zubeyranwar/App-of-Apps.git
+    targetRevision: main
+    path: workloads/my-app
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: my-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
 
-Then open `http://localhost:8080`.
+### 2) Add workload manifests
 
-If this works, your deployment path is correct even without ingress DNS.
+Create folder:
+- `workloads/my-app/`
 
-## What “domain” means here
+Required files:
+- `namespace.yaml`
+- `deployment.yaml`
+- `service.yaml`
+- `ingress.yaml`
+- `kustomization.yaml`
 
-The value in `workloads/infra-test-react/ingress.yaml` is only the public hostname for ingress, for example `app.infratest.vps.thec1oud.uk`.
+Minimum `kustomization.yaml` pattern:
 
-It is **not required** for the first GitOps test.
+```yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: my-app
+resources:
+  - namespace.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+images:
+  - name: ghcr.io/<owner>/my-app
+    newTag: main
+    newName: ghcr.io/<owner>/my-app
+```
 
-You only need it later if you want to reach the app from the internet through ingress and TLS.
+### 3) Push changes
 
-## Notes
+```bash
+git add apps/my-app workloads/my-app
+git commit -m "Add my-app to App-of-Apps"
+git push
+```
 
-- This setup assumes Argo CD and Argo CD Image Updater are already installed.
-- Image Updater uses `digest` strategy on tag `main`.
-- Workload manifests are intentionally minimal for infra/GitOps validation.
+### 4) Force refresh (optional, speeds up)
+
+```bash
+kubectl annotate app platform-app-of-apps -n argocd argocd.argoproj.io/refresh=hard --overwrite
+kubectl get app my-app -n argocd
+```
+
+## App repository requirements (for auto image updates)
+
+Each app repo should have:
+- `Dockerfile`
+- `.github/workflows/publish-ghcr.yml` that pushes `ghcr.io/<owner>/<app>:main`
+
+## Operational checks
+
+```bash
+kubectl get app -n argocd
+kubectl get pods -A | grep -E 'argocd|ingress-nginx'
+kubectl logs -n argocd deploy/argocd-image-updater-controller --since=10m | tail -n 100
+```
+
+## Domain troubleshooting (important)
+
+If browser says **"This site can’t be reached"**:
+
+1. Confirm DNS A record points to the actual ingress public IP.
+2. Confirm public ports `80/443` are open in cloud firewall to ingress nodes.
+3. Confirm ingress controller has healthy pods/endpoints.
+4. Confirm ingress host in cluster matches domain.
+
+Useful commands:
+
+```bash
+dig +short zubeyr.duckdns.org
+dig +short nodejstest.duckdns.org
+
+kubectl -n ingress-nginx get ds,svc,pods,endpoints
+kubectl -n infra-test-react get ingress infra-test-react -o yaml
+kubectl -n infra-test-node get ingress infra-test-node -o yaml
+```
+
+If DNS is correct but still unreachable, issue is usually network path (firewall/NAT/public IP binding), not Argo manifests.
