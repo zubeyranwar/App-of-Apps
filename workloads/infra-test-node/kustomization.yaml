@@ -10,3 +10,4 @@ images:
   - name: ghcr.io/zubeyranwar/infra-test-node
     newTag: main
     newName: ghcr.io/zubeyranwar/infra-test-node
+    digest: sha256:f3e0653616233d864c893309bc1042d3ca4f7ffc5dd93600ea56815208183d83
