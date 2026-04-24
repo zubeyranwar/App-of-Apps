@@ -11,4 +11,4 @@ images:
   - name: ghcr.io/zubeyranwar/infra-test-react
     newTag: main
     newName: ghcr.io/zubeyranwar/infra-test-react
-    digest: sha256:63698353558c2ba91d39a91d74f8490ed4840132d5081004b452b4646a114043
+    digest: sha256:db6ca8c13899a64d42ac599f77114d4b2d28e7cf5a7a6ff1530311d2418c0f4d
